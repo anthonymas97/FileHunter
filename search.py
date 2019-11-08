@@ -6,13 +6,14 @@ search = 0
 
 # local subscriber to the new list
 # returns full new list and the keyword it was searched against
-def newList(list, keyword):
+def newList(list, keyword, finished):
     global num
-    print('FOUND NEW LIST', keyword)
+    print('FOUND NEW LIST;', 'Keyword: ', keyword, '; FINISHED: ', finished)
 
     # example to stop the search
     num += 1
     if num >= 20:
+        num = 0
         search.stopSearch()
 
 if __name__ == "__main__":
@@ -25,10 +26,12 @@ if __name__ == "__main__":
         # this way the UI can be updated as soon as a new file is available
         search.events.newFileList += newList
 
-        # execute a new search
-        while search.isIndexing():
-            continue
+        # execute a new searches
         search.search('trademark')
+
+        sleep(10)
+
+        search.search('new')
 
     except Exception as e:
         print('ERROR', e)

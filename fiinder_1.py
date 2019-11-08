@@ -4,7 +4,7 @@ import sys
 import glob
 from os import walk
 import mmap
-from threading import  Thread
+from threading import  Thread, Timer
 from datetime import datetime
 from events import Events
 from time import sleep
@@ -15,23 +15,25 @@ class Search:
 	extension_List = [".txt", ".ppt", ".doc",".xls", ".csv"]
 	searchList = []
 	drivesList = []
+	timer = None
 	
-	events = 0
+	events = None
 	indexing = False
-	totalIndexThreads = 0
 	killSearch = False
-
-	t1 = datetime.now()
 
 	def __init__(self):
     	# body of the constructor
 		self.events = Events()
 		self.indexing = True
-		self.drivesList = self.get_drives()
-		self.startSearch()
+		self.drivesList = self._get_drives()
+		self._startSearch()
 		print(self.drivesList)
 
-	def get_drives(self):
+	def _startSearchTimer(self):
+		self.timer = Timer(60.0, self._startSearch)
+		self.timer.start()
+
+	def _get_drives(self):
 		response = os.popen("wmic logicaldisk get caption")
 		list1 = []
 		total_file = []
@@ -56,7 +58,7 @@ class Search:
 				list1.append(line)
 		return list1
 
-	def searchFile(self, filename, dirname):
+	def _searchFile(self, filename, dirname):
 		for extension in self.extension_List:
 			if filename.lower().endswith(extension):
 				cwd = os.getcwd()
@@ -66,59 +68,58 @@ class Search:
 					return fullPath
 		return -1
 
-	def searchFileContents(self, sourceFile, keyword):
+	def _searchFileContents(self, sourceFile, keyword):
 		try:
 			a = sourceFile.replace(r'\t', r'\\t').replace(r'\a', r'\\a')
 			f = open(a, 'r')
 			contents = f.read()
 			if (contents.find(keyword) >= 0):
-				print('FOUND: ', sourceFile)
+				#print('FOUND: ', sourceFile)
 				return True
 			else:
 				return False
 		except:
 			return False
 
-	def threadedWalk(self, directory):
+	def _threadedWalk(self, directory):
 		#print('THREADED WALK')
 		global searchList
 		if (os.path.isdir(directory)):
 			for (dirname,dirs,files) in os.walk(directory):
 					for filename in files:
-						result = self.searchFile(filename, dirname)
+						result = self._searchFile(filename, dirname)
 						if (result != -1 and result not in self.searchList):
 							self.searchList.append(result)
-		if self.indexing and self.totalIndexThreads > 0:
-			self.totalIndexThreads -= 1
-		else:
-			self.indexing = False
 
 	os.chdir('/')
-	def spider(self, drivesList):
+	def _spider(self, drivesList):
 		for drive in self.drivesList:
 			if (os.path.isdir(drive)):
 				#print('DRIVE', drive)
-				thread = Thread(target=self.threadedWalk, args=(drive,))
+				thread = Thread(target=self._threadedWalk, args=(drive,))
 				thread.start()
-				self.totalIndexThreads += 1
 
-	def startSearch(self):
-		self.spider(self.drivesList)
+	def _startSearch(self):
+		print('SEARCH STARTED')
+		self._spider(self.drivesList)
+		self._startSearchTimer()
 
 	def search(self, keyword):
 		self.keyword = keyword
+		self.killSearch = False
 		localList = []
-
 		if self.indexing:
-			Exception('INDEXING')
+			self.indexing = False
+			sleep(5)
 		
 		for file in self.searchList:
 			if (self.killSearch):
 				self.killSearch = False
 				break
-			if self.searchFileContents(file, keyword):
+			if self._searchFileContents(file, keyword):
 				localList.append(file)
-				self.events.newFileList(localList, self.keyword)
+				self.events.newFileList(localList, self.keyword, False)
+		self.events.newFileList(localList, self.keyword, True)
 		return localList
 
 	def stopSearch(self):
