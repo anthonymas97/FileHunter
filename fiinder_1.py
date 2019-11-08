@@ -6,18 +6,27 @@ from os import walk
 import mmap
 from threading import  Thread
 from datetime import datetime
+from events import Events
+from time import sleep
 
 
 class Search:
-	keyword = "trademark"
+	keyword = ""
 	extension_List = [".txt", ".ppt", ".doc",".xls", ".csv"]
 	searchList = []
 	drivesList = []
+	
+	events = 0
+	indexing = False
+	totalIndexThreads = 0
+	killSearch = False
 
 	t1 = datetime.now()
 
 	def __init__(self):
     	# body of the constructor
+		self.events = Events()
+		self.indexing = True
 		self.drivesList = self.get_drives()
 		self.startSearch()
 		print(self.drivesList)
@@ -41,6 +50,8 @@ class Search:
 						dirname != 'Program Files' and not 
 						dirname.startswith('C:\\$')):
 						list1.append('C:\\' + dirname)
+			elif line == 'K:':
+				continue
 			else:
 				list1.append(line)
 		return list1
@@ -51,7 +62,7 @@ class Search:
 				cwd = os.getcwd()
 				fullPath = os.path.join(dirname,filename)
 				if os.path.isfile(fullPath): #and searchFileContents(fullPath, keyword):
-					print(fullPath)
+					#print(fullPath)
 					return fullPath
 		return -1
 
@@ -75,32 +86,43 @@ class Search:
 			for (dirname,dirs,files) in os.walk(directory):
 					for filename in files:
 						result = self.searchFile(filename, dirname)
-						if (result != -1):
+						if (result != -1 and result not in self.searchList):
 							self.searchList.append(result)
+		if self.indexing and self.totalIndexThreads > 0:
+			self.totalIndexThreads -= 1
+		else:
+			self.indexing = False
 
 	os.chdir('/')
 	def spider(self, drivesList):
-		#print('THREADING')
 		for drive in self.drivesList:
-			# if drive.startswith('C:\\$'):
-			# 	continue
 			if (os.path.isdir(drive)):
-				print('DRIVE', drive)
+				#print('DRIVE', drive)
 				thread = Thread(target=self.threadedWalk, args=(drive,))
 				thread.start()
-
-	#file1 = r"C:\Users\grena_000\Documents\test.txt"
+				self.totalIndexThreads += 1
 
 	def startSearch(self):
 		self.spider(self.drivesList)
 
 	def search(self, keyword):
+		self.keyword = keyword
 		localList = []
+
+		if self.indexing:
+			Exception('INDEXING')
+		
 		for file in self.searchList:
+			if (self.killSearch):
+				self.killSearch = False
+				break
 			if self.searchFileContents(file, keyword):
 				localList.append(file)
+				self.events.newFileList(localList, self.keyword)
 		return localList
 
-	t2 = datetime.now()
-	totalTime = t2-t1
-	print('Total Time', totalTime)
+	def stopSearch(self):
+		self.killSearch = True
+
+	def isIndexing(self):
+		return self.indexing
