@@ -52,8 +52,6 @@ class Search:
 						dirname != 'Program Files' and not 
 						dirname.startswith('C:\\$')):
 						list1.append('C:\\' + dirname)
-			elif line == 'K:':
-				continue
 			else:
 				list1.append(line)
 		return list1
@@ -86,10 +84,10 @@ class Search:
 		global searchList
 		if (os.path.isdir(directory)):
 			for (dirname,dirs,files) in os.walk(directory):
-					for filename in files:
-						result = self._searchFile(filename, dirname)
-						if (result != -1 and result not in self._searchList):
-							self._searchList.append(result)
+				for filename in files:
+					result = self._searchFile(filename, dirname)
+					if (result != -1 and result not in self._searchList):
+						self._searchList.append(result)
 
 	os.chdir('/')
 	def _spider(self, drivesList):
