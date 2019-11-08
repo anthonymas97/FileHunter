@@ -1,20 +1,16 @@
+# Example implementation for search
+#
+#
+
 from fiinder_1 import Search
 from time import sleep
 
-num = 0
 search = 0
 
 # local subscriber to the new list
 # returns full new list and the keyword it was searched against
 def newList(list, keyword, finished):
-    global num
-    print('FOUND NEW LIST;', 'Keyword: ', keyword, '; FINISHED: ', finished)
-
-    # example to stop the search
-    num += 1
-    if num >= 20:
-        num = 0
-        search.stopSearch()
+    print('FOUND NEW LIST: ', len(list), '; Keyword: ', keyword, '; FINISHED: ', finished)
 
 if __name__ == "__main__":
     try:
@@ -27,11 +23,9 @@ if __name__ == "__main__":
         search.events.newFileList += newList
 
         # execute a new searches
+        # this also returns the final list synchronously if you dont want to use callback
         search.search('trademark')
-
-        sleep(10)
-
-        search.search('new')
+        search.stopSearch()
 
     except Exception as e:
         print('ERROR', e)
